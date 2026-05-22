@@ -9,6 +9,4 @@ build/
 .env
 .venv/
 venv/
-*.json
-!package.json
 polymarket_data/
