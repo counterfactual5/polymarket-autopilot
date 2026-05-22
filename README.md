@@ -8,6 +8,7 @@
 
 Zero Dependencies · Polymarket CLOB API · EIP-712 Signing · 25+ API Endpoints
 
+[![Test](https://github.com/counterfactual5/polymarket-autopilot/actions/workflows/test.yml/badge.svg)](https://github.com/counterfactual5/polymarket-autopilot/actions)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Zero Deps](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](pyproject.toml)
