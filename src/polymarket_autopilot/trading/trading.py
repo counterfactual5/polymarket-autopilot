@@ -260,7 +260,7 @@ class PolymarketTrader:
                 "usdc_balance": float(data.get("balance", 0)),
                 "address": self.address,
             }
-        except Exception:
+        except (PolymarketAPIError, urllib.error.URLError, ValueError):
             return {
                 "usdc_balance": 0.0,
                 "address": self.address,
