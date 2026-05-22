@@ -326,7 +326,7 @@ python -m pytest tests/ -v
 
 ## Roadmap
 
-- [ ] Strategy framework (mean-reversion, momentum, convergence)
+- [x] Strategy framework (mean-reversion, momentum, convergence)
 - [ ] Market analysis (probability trends, volume anomalies)
 - [ ] Backtesting engine with historical data
 - [ ] Arbitrage scanner (spread + cross-market)
