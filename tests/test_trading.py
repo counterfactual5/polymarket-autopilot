@@ -1,7 +1,7 @@
 """Tests for polymarket_autopilot.trading."""
 
-import unittest
 import os
+import unittest
 
 
 class TestTradingImports(unittest.TestCase):
@@ -32,6 +32,7 @@ class TestTradingImports(unittest.TestCase):
             for k, v in saved.items():
                 if v is not None:
                     os.environ[k] = v
+
 
 if __name__ == "__main__":
     unittest.main()
