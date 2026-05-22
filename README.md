@@ -6,7 +6,9 @@
 
 **Fetch markets. Place orders. Track positions.** All in pure Python.
 
-Zero Dependencies · Polymarket CLOB API · EIP-712 Signing · 25+ API Endpoints
+Zero Dependencies* · Polymarket CLOB API · EIP-712 Signing · 25+ API Endpoints
+
+<sub>*Market data: zero deps. Trading: `eth-account` only, for EIP-712 signing.</sub>
 
 [![Test](https://github.com/counterfactual5/polymarket-autopilot/actions/workflows/test.yml/badge.svg)](https://github.com/counterfactual5/polymarket-autopilot/actions)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -280,11 +282,16 @@ Data Flow:
 
   User Code
      │
-     ├── fetcher.search("bitcoin") ──→ Polymarket Gamma API ──→ Market list
-     │                                                          │
-     ├── fetcher.fetch_orderbook() ──→ Polymarket CLOB API ──→ Order book
-     │                                                          │
+     ├── fetcher.search() ──────────→ Polymarket Gamma API ──→ events, markets, tags
+     │
+     ├── fetcher.fetch_orderbook() ──→ Polymarket CLOB API ──→ prices, spreads, trades
+     │
+     ├── fetcher.fetch_leaderboard() → Polymarket Data API ──→ leaderboard, open interest
+     │
      └── trader.place_order(order) ──→ EIP-712 Sign ──→ Polymarket CLOB ──→ ✅ Order placed
+                                          ↑
+                                     eth-account
+                                   (trading extra)
 ```
 
 ## Security
@@ -320,8 +327,14 @@ Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Curso
 ## Development
 
 ```bash
-pip install -e ".[trading]"
-python -m pytest tests/ -v
+git clone https://github.com/counterfactual5/polymarket-autopilot.git
+cd polymarket-autopilot
+
+# Install with dev + trading deps
+uv pip install -e ".[dev,trading]"
+
+# Run tests
+uv run pytest tests/ -v
 ```
 
 ## Roadmap
