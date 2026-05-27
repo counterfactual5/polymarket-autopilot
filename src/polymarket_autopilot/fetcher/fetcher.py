@@ -22,7 +22,6 @@ Usage::
 
 import difflib
 import gzip
-import io
 import json
 import time
 import urllib.error
