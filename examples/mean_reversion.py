@@ -15,9 +15,9 @@ educational / research purposes only.
 
 from polymarket_autopilot.fetcher.fetcher import (
     fetch_events,
-    get_clob_midpoint,
-    get_clob_spread,
-    get_price_history,
+    fetch_midpoint,
+    fetch_spread,
+    fetch_price_history,
 )
 
 
@@ -75,8 +75,8 @@ def main():
             token_id = markets[0].get("tokens", [{}])[0].get("token_id", "")
 
         try:
-            mid = get_clob_midpoint(token_id)
-            spread = get_clob_spread(token_id)
+            mid = fetch_midpoint(token_id)
+            spread = fetch_spread(token_id)
         except Exception:
             mid = None
             spread = None
@@ -87,7 +87,7 @@ def main():
 
         # 2. Get price history for SMA
         try:
-            history = get_price_history(token_id, interval="1h")
+            history = fetch_price_history(token_id, interval="1h")
             prices = [p["p"] for p in history if p.get("p")]
             sma = compute_simple_moving_average(prices, window=20)
         except Exception:
