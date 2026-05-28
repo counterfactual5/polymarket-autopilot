@@ -21,6 +21,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
 # Optional: eth-account for direct signing
@@ -102,6 +103,10 @@ class PolymarketAPIError(Exception):
         super().__init__(f"HTTP {status_code}: {body[:200]}")
 
 
+class TradingInputError(ValueError):
+    """Raised when user-provided order fields are invalid."""
+
+
 # ═══════════════════════════════════════════════════════════════════════
 
 
@@ -180,8 +185,27 @@ class PolymarketTrader:
 
     # ─────────────────────────── Orders ────────────────────────────────────
 
+    @staticmethod
+    def _validate_order(order: Order) -> tuple[Decimal, Decimal]:
+        side = order.side.lower().strip()
+        if side not in {"buy", "sell"}:
+            raise TradingInputError("order.side must be 'buy' or 'sell'")
+        if not str(order.token_id).strip():
+            raise TradingInputError("order.token_id must be non-empty")
+        try:
+            price = Decimal(str(order.price))
+            size = Decimal(str(order.size))
+        except (InvalidOperation, ValueError) as exc:
+            raise TradingInputError("order.price/order.size must be numeric") from exc
+        if price <= 0 or price > 1:
+            raise TradingInputError("order.price must be in (0, 1]")
+        if size <= 0:
+            raise TradingInputError("order.size must be > 0")
+        return price, size
+
     def place_order(self, order: Order) -> dict:
         """Place an order on Polymarket."""
+        price_dec, size_dec = self._validate_order(order)
         if order.nonce is None:
             order.nonce = self._get_nonce()
 
@@ -190,8 +214,8 @@ class PolymarketTrader:
             "tokenID": order.token_id,
             "side": order.side.upper(),
             "orderType": order.order_type.upper(),
-            "price": int(order.price * 1_000_000),
-            "size": int(order.size * 1_000_000),
+            "price": int(price_dec * Decimal("1000000")),
+            "size": int(size_dec * Decimal("1000000")),
             "address": self.address,
             "nonce": order.nonce,
         }
@@ -201,15 +225,25 @@ class PolymarketTrader:
 
         body = json.dumps(payload).encode("utf-8")
         headers = {**self._base_headers, "Content-Type": "application/json"}
-        return _request(f"{CLOB_BASE}/orders", method="POST", headers=headers, data=body)
+        try:
+            return _request(f"{CLOB_BASE}/orders", method="POST", headers=headers, data=body)
+        except PolymarketAPIError as exc:
+            raise RuntimeError(
+                f"place_order failed (status={exc.status_code}, url={exc.url}): {exc.body[:200]}"
+            ) from exc
 
     def cancel_order(self, order_id: str) -> dict:
         """Cancel an existing order."""
-        return _request(
-            f"{CLOB_BASE}/orders/{order_id}",
-            method="DELETE",
-            headers=self._base_headers,
-        )
+        try:
+            return _request(
+                f"{CLOB_BASE}/orders/{order_id}",
+                method="DELETE",
+                headers=self._base_headers,
+            )
+        except PolymarketAPIError as exc:
+            raise RuntimeError(
+                f"cancel_order failed (status={exc.status_code}, url={exc.url}): {exc.body[:200]}"
+            ) from exc
 
     def cancel_all_orders(self, token_id: Optional[str] = None) -> dict:
         """Cancel all orders, optionally filtered by token."""
