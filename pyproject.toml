@@ -28,7 +28,7 @@ dependencies = []
 
 [project.optional-dependencies]
 trading = ["eth-account>=0.10"]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.1.0"]
 
 [project.urls]
 Repository = "https://github.com/counterfactual5/polymarket-autopilot"
