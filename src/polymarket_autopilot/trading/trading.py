@@ -20,10 +20,12 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
+from polymarket_autopilot import state_machine
 from polymarket_autopilot.audit import (
     EVENT_BROADCAST,
     EVENT_CANCEL,
@@ -76,6 +78,7 @@ class Position:
 
 # ─────────────────────────── HTTP helpers ──────────────────────────────────
 
+
 def _request(
     url: str,
     *,
@@ -85,11 +88,16 @@ def _request(
     timeout: int = 30,
 ) -> Any:
     """Perform an HTTP request using stdlib urllib (no *requests*)."""
-    req = urllib.request.Request(url, data=data, method=method, headers={
-        "User-Agent": "polymarket-trader/1.0",
-        "Accept-Encoding": "gzip, deflate",
-        **(headers or {}),
-    })
+    req = urllib.request.Request(
+        url,
+        data=data,
+        method=method,
+        headers={
+            "User-Agent": "polymarket-trader/1.0",
+            "Accept-Encoding": "gzip, deflate",
+            **(headers or {}),
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read()
@@ -214,6 +222,25 @@ class PolymarketTrader:
     def place_order(self, order: Order) -> dict:
         """Place an order on Polymarket."""
         price_dec, size_dec = self._validate_order(order)
+        # --- state machine ---
+        run_id = (
+            os.environ.get("AUDIT_RUN_ID")
+            or os.environ.get("STAGEFORGE_RUN_ID")
+            or f"pm-{uuid.uuid4().hex[:12]}"
+        )
+        # --- state machine: signed ---
+        try:
+            state_machine.transition(run_id, state_machine.STATE_SIGNED)
+        except Exception:
+            pass
+        try:
+            state_machine.transition(
+                run_id,
+                state_machine.STATE_PREFLIGHT,
+                payload={"token_id": order.token_id, "side": order.side},
+            )
+        except Exception:
+            pass
         if order.nonce is None:
             order.nonce = self._get_nonce()
 
@@ -248,8 +275,19 @@ class PolymarketTrader:
             },
         )
         try:
-            result = _request(f"{CLOB_BASE}/orders", method="POST", headers=headers, data=body)
+            result = _request(
+                f"{CLOB_BASE}/orders", method="POST", headers=headers, data=body
+            )
         except PolymarketAPIError as exc:
+            # --- state machine: failed ---
+            try:
+                state_machine.transition(
+                    run_id,
+                    state_machine.STATE_FAILED,
+                    payload={"error_code": f"http_{exc.status_code}"},
+                )
+            except Exception:
+                pass
             log_event(
                 event=EVENT_ERROR,
                 chain="polygon",
@@ -275,6 +313,11 @@ class PolymarketTrader:
                 "orderId": (result or {}).get("orderID") or (result or {}).get("id"),
             },
         )
+        # --- state machine: broadcast ---
+        try:
+            state_machine.transition(run_id, state_machine.STATE_BROADCAST)
+        except Exception:
+            pass
         return result
 
     def cancel_order(self, order_id: str) -> dict:
