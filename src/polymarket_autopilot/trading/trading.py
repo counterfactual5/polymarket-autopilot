@@ -31,6 +31,7 @@ from polymarket_autopilot.audit import (
     EVENT_BROADCAST,
     EVENT_CANCEL,
     EVENT_ERROR,
+    EVENT_PREFLIGHT,
     EVENT_SIGN,
     log_event,
 )
@@ -245,6 +246,8 @@ class PolymarketTrader:
             "chain": "polygon",
             "sender": self.address,
             "price": str(price_dec),
+            # Notional cost of this order (price in [0,1] USDC × shares).
+            "position_value": str(price_dec * size_dec),
         }
         policy_result = _policy.check_polymarket(pol, policy_ctx)
         if not policy_result.allowed:
@@ -259,6 +262,13 @@ class PolymarketTrader:
             )
             raise RuntimeError(
                 f"Policy rejected: {'; '.join(v.message for v in policy_result.violations)}"
+            )
+        if policy_result.warnings:
+            log_event(
+                event=EVENT_PREFLIGHT,
+                chain="polygon",
+                wallet=self.address,
+                details={"stage": "policy", "warnings": policy_result.to_dict()["warnings"]},
             )
 
         action = state_machine.next_action(run_id)
