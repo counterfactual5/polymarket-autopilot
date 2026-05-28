@@ -237,6 +237,26 @@ class PolymarketTrader:
                 state_machine.STATE_PREFLIGHT,
                 payload={"token_id": order.token_id, "side": order.side},
             )
+        action = state_machine.next_action(run_id)
+        if action is None:
+            raise RuntimeError(f"run {run_id} is in terminal state — cannot proceed")
+        if action == state_machine.STATE_BROADCAST:
+            saved = state_machine.load_state(run_id) or {}
+            return {
+                "status": "already_broadcast",
+                "run_id": run_id,
+                "orderId": (saved.get("payload") or {}).get("order_id"),
+            }
+        if action == state_machine.STATE_CONFIRMED:
+            saved = state_machine.load_state(run_id) or {}
+            return {
+                "status": "already_confirmed",
+                "run_id": run_id,
+                "orderId": (saved.get("payload") or {}).get("order_id"),
+            }
+        if action != state_machine.STATE_SIGNED:
+            raise RuntimeError(f"unexpected next_action={action!r} before signing")
+
         if order.nonce is None:
             order.nonce = self._get_nonce()
 
@@ -257,10 +277,8 @@ class PolymarketTrader:
         body = json.dumps(payload).encode("utf-8")
         headers = {**self._base_headers, "Content-Type": "application/json"}
 
-        # --- state machine: signed (only if not already past this point) ---
-        action = state_machine.next_action(run_id)
-        if action == state_machine.STATE_SIGNED:
-            state_machine.transition(run_id, state_machine.STATE_SIGNED)
+        # --- state machine: signed ---
+        state_machine.transition(run_id, state_machine.STATE_SIGNED)
 
         log_event(
             event=EVENT_SIGN,
@@ -313,9 +331,11 @@ class PolymarketTrader:
             },
         )
         # --- state machine: broadcast ---
-        action = state_machine.next_action(run_id)
-        if action == state_machine.STATE_BROADCAST:
-            state_machine.transition(run_id, state_machine.STATE_BROADCAST)
+        state_machine.transition(
+            run_id,
+            state_machine.STATE_BROADCAST,
+            payload={"order_id": (result or {}).get("orderID") or (result or {}).get("id")},
+        )
         return result
 
     def cancel_order(self, order_id: str) -> dict:
