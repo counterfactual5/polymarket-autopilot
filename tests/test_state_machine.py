@@ -158,5 +158,62 @@ class TestStateMachineEnvVars(unittest.TestCase):
         self.assertEqual(s["run_id"], "audit-run-99")
 
 
+class TestAntiReplayPlaceOrder(unittest.TestCase):
+    """Anti-replay: same run_id must NOT call _request(POST /orders) again.
+
+    Simulates the scenario where a prior run already completed broadcast.
+    A second invocation of ``place_order`` with the same ``run_id`` must
+    return a recovery result instead of signing + posting again.
+    """
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.TemporaryDirectory()
+        os.environ["STAGEFORGE_STATE_DIR"] = self._tmpdir.name
+        self.run_id = "pm-replay-guard-001"
+
+        state_machine.transition(self.run_id, state_machine.STATE_PREFLIGHT,
+                                 payload={"token_id": "tok-abc", "side": "buy"})
+        state_machine.transition(self.run_id, state_machine.STATE_SIGNED)
+        state_machine.transition(self.run_id, state_machine.STATE_BROADCAST,
+                                 payload={"order_id": "order-xyz"})
+
+    def tearDown(self) -> None:
+        self._tmpdir.cleanup()
+        os.environ.pop("STAGEFORGE_STATE_DIR", None)
+        os.environ.pop("AUDIT_RUN_ID", None)
+
+    def test_request_post_not_called_on_replay(self) -> None:
+        from decimal import Decimal
+        from unittest import mock
+
+        os.environ["AUDIT_RUN_ID"] = self.run_id
+
+        from polymarket_autopilot.trading.trading import Order, PolymarketTrader
+
+        order = Order(token_id="tok-abc", side="buy", price=0.55, size=10)
+
+        with (
+            mock.patch("polymarket_autopilot.trading.trading._request") as mock_request,
+            mock.patch.object(PolymarketTrader, "_validate_order",
+                              return_value=(Decimal("0.55"), Decimal("10"))),
+        ):
+            # Build a minimal trader without actually needing eth-account.
+            trader = object.__new__(PolymarketTrader)
+            trader.api_key = "test"
+            trader.address = "0xtest"
+            trader.private_key = None
+            trader.account = None
+            trader._base_headers = {"Authorization": "Bearer test"}
+
+            result = PolymarketTrader.place_order(trader, order)
+
+            # _request(POST /orders) must NOT have been called.
+            mock_request.assert_not_called()
+
+        # State is BROADCAST → next_action returns CONFIRMED → code path returns "already_confirmed"
+        self.assertIn(result["status"], ("already_broadcast", "already_confirmed"))
+        self.assertEqual(result["orderId"], "order-xyz")
+
+
 if __name__ == "__main__":
     unittest.main()
