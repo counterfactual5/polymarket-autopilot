@@ -21,6 +21,12 @@ Zero Dependencies* · Polymarket CLOB API · EIP-191 Signing · 25+ API Endpoint
 
 ---
 
+> [!IMPORTANT]
+> **Trading safety.** Order paths run through a shared risk-control policy
+> (amount caps, price range, max position value, chain allow-list) evaluated
+> between the `PREFLIGHT` and `SIGNED` states. Read **[RISK_POLICY.md](RISK_POLICY.md)**
+> and copy `policy.yaml` to `~/.stageforge/policy.yaml` before going live.
+
 ## The Problem
 
 Polymarket is the world's largest prediction market — but they don't offer a Python SDK. Their [official docs](https://docs.polymarket.com) show raw `curl` commands and JavaScript examples. If you want to build trading bots, analyze markets, or automate strategies in Python, you're on your own.
