@@ -1,3 +1,3 @@
 """Polymarket Autopilot — trading client and market data fetcher."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
