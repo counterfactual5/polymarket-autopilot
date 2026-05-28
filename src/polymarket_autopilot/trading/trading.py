@@ -24,6 +24,14 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
+from polymarket_autopilot.audit import (
+    EVENT_BROADCAST,
+    EVENT_CANCEL,
+    EVENT_ERROR,
+    EVENT_SIGN,
+    log_event,
+)
+
 # Optional: eth-account for direct signing
 try:
     from eth_account import Account
@@ -225,25 +233,81 @@ class PolymarketTrader:
 
         body = json.dumps(payload).encode("utf-8")
         headers = {**self._base_headers, "Content-Type": "application/json"}
+        log_event(
+            event=EVENT_SIGN,
+            chain="polygon",
+            wallet=self.address,
+            details={
+                "operation": "place_order",
+                "tokenId": order.token_id,
+                "side": order.side.upper(),
+                "price": str(price_dec),
+                "size": str(size_dec),
+                "orderType": order.order_type.upper(),
+                "nonce": order.nonce,
+            },
+        )
         try:
-            return _request(f"{CLOB_BASE}/orders", method="POST", headers=headers, data=body)
+            result = _request(f"{CLOB_BASE}/orders", method="POST", headers=headers, data=body)
         except PolymarketAPIError as exc:
+            log_event(
+                event=EVENT_ERROR,
+                chain="polygon",
+                wallet=self.address,
+                error_code=f"http_{exc.status_code}",
+                details={
+                    "operation": "place_order",
+                    "tokenId": order.token_id,
+                    "url": exc.url,
+                    "body": exc.body[:200],
+                },
+            )
             raise RuntimeError(
                 f"place_order failed (status={exc.status_code}, url={exc.url}): {exc.body[:200]}"
             ) from exc
+        log_event(
+            event=EVENT_BROADCAST,
+            chain="polygon",
+            wallet=self.address,
+            details={
+                "operation": "place_order",
+                "tokenId": order.token_id,
+                "orderId": (result or {}).get("orderID") or (result or {}).get("id"),
+            },
+        )
+        return result
 
     def cancel_order(self, order_id: str) -> dict:
         """Cancel an existing order."""
         try:
-            return _request(
+            result = _request(
                 f"{CLOB_BASE}/orders/{order_id}",
                 method="DELETE",
                 headers=self._base_headers,
             )
         except PolymarketAPIError as exc:
+            log_event(
+                event=EVENT_ERROR,
+                chain="polygon",
+                wallet=self.address,
+                error_code=f"http_{exc.status_code}",
+                details={
+                    "operation": "cancel_order",
+                    "orderId": order_id,
+                    "url": exc.url,
+                    "body": exc.body[:200],
+                },
+            )
             raise RuntimeError(
                 f"cancel_order failed (status={exc.status_code}, url={exc.url}): {exc.body[:200]}"
             ) from exc
+        log_event(
+            event=EVENT_CANCEL,
+            chain="polygon",
+            wallet=self.address,
+            details={"operation": "cancel_order", "orderId": order_id},
+        )
+        return result
 
     def cancel_all_orders(self, token_id: Optional[str] = None) -> dict:
         """Cancel all orders, optionally filtered by token."""
