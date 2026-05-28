@@ -6,9 +6,9 @@
 
 **Fetch markets. Place orders. Track positions.** All in pure Python.
 
-Zero Dependencies* · Polymarket CLOB API · EIP-712 Signing · 25+ API Endpoints
+Zero Dependencies* · Polymarket CLOB API · EIP-191 Signing · 25+ API Endpoints
 
-<sub>*Market data: zero deps. Trading: `eth-account` only, for EIP-712 signing.</sub>
+<sub>*Market data: zero deps. Trading: `eth-account` only, for message signing.</sub>
 
 [![Test](https://github.com/counterfactual5/polymarket-autopilot/actions/workflows/test.yml/badge.svg)](https://github.com/counterfactual5/polymarket-autopilot/actions)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -32,7 +32,7 @@ Polymarket is the world's largest prediction market — but they don't offer a P
 
   1. Read Polymarket API docs              1. pip install polymarket-autopilot
   2. Write HTTP client from scratch        2. from polymarket_autopilot.fetcher import search
-  3. Implement EIP-712 signing             3. results = search("US election")
+  3. Implement message signing             3. results = search("US election")
   4. Debug authentication headers
   5. Handle pagination manually            ✅ Done.
 ```
@@ -56,7 +56,7 @@ Polymarket is the world's largest prediction market — but they don't offer a P
 
 ### ⚡ Trading (auth required)
 
-- **Place Orders** — limit orders on any outcome with EIP-712 signing
+- **Place Orders** — limit orders on any outcome with personal-sign (EIP-191)
 - **Cancel Orders** — cancel single or all orders
 - **View Positions** — current holdings across all markets
 - **View Open Orders** — pending orders with optional market filter
@@ -65,7 +65,7 @@ Polymarket is the world's largest prediction market — but they don't offer a P
 ### 🔧 Engineering
 
 - **Zero dependencies** — pure Python stdlib (urllib, json, hashlib)
-- **Pagination handled** — automatic cursor-based pagination for large result sets
+- **Pagination handled** — automatic offset-based pagination for large result sets
 - **Retry logic** — built-in retry with exponential backoff
 - **Gzip support** — automatic decompression for faster responses
 - **Type-annotated** — full type hints for IDE autocomplete
@@ -78,7 +78,7 @@ Polymarket is the world's largest prediction market — but they don't offer a P
 # Market data only (zero deps)
 pip install polymarket-autopilot
 
-# Add trading support (eth-account for EIP-712 signing)
+# Add trading support (eth-account for signing)
 pip install "polymarket-autopilot[trading]"
 ```
 
@@ -248,7 +248,7 @@ trader.cancel_all_orders(token_id=token_id)
 | Method | Description |
 |---|---|
 | `PolymarketTrader.from_env()` | Create trader from environment variables |
-| `trader.place_order(order)` | Place a limit order (EIP-712 signed) |
+| `trader.place_order(order)` | Place a limit order (signed) |
 | `trader.cancel_order(order_id)` | Cancel a specific order |
 | `trader.cancel_all_orders(token_id?)` | Cancel all orders (optionally filtered) |
 | `trader.get_orders(token_id?)` | List open orders |
@@ -272,7 +272,7 @@ polymarket_autopilot/
         ├── Order           Limit order dataclass
         ├── Position        Position dataclass
         └── PolymarketTrader  Main trading client
-            ├── EIP-712 signing (eth-account, optional)
+            ├── Message signing (eth-account, optional)
             ├── Place / cancel orders
             └── Position & balance queries
 ```
@@ -288,7 +288,7 @@ Data Flow:
      │
      ├── fetcher.fetch_leaderboard() → Polymarket Data API ──→ leaderboard, open interest
      │
-     └── trader.place_order(order) ──→ EIP-712 Sign ──→ Polymarket CLOB ──→ ✅ Order placed
+     └── trader.place_order(order) ──→ Sign ──→ Polymarket CLOB ──→ ✅ Order placed
                                           ↑
                                      eth-account
                                    (trading extra)
@@ -318,7 +318,7 @@ This library is designed as the execution backend for AI trading agents:
 # 1. Research   →  search markets, check prices and spreads
 # 2. Analyze    →  fetch orderbook depth, price history, open interest
 # 3. Decide     →  your model / strategy logic
-# 4. Execute    →  place_order() with EIP-712 signing
+# 4. Execute    →  place_order() with message signing
 # 5. Monitor    →  get_positions(), get_orders()
 ```
 
