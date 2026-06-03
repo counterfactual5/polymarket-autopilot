@@ -251,8 +251,11 @@ class PolymarketTrader:
         }
         policy_result = _policy.check_polymarket(pol, policy_ctx)
         if not policy_result.allowed:
-            state_machine.transition(run_id, state_machine.STATE_FAILED,
-                                     payload={"policy_violations": policy_result.to_dict()["violations"]})
+            state_machine.transition(
+                run_id,
+                state_machine.STATE_FAILED,
+                payload={"policy_violations": policy_result.to_dict()["violations"]},
+            )
             log_event(
                 event=EVENT_ERROR,
                 chain="polygon",
@@ -268,7 +271,10 @@ class PolymarketTrader:
                 event=EVENT_PREFLIGHT,
                 chain="polygon",
                 wallet=self.address,
-                details={"stage": "policy", "warnings": policy_result.to_dict()["warnings"]},
+                details={
+                    "stage": "policy",
+                    "warnings": policy_result.to_dict()["warnings"],
+                },
             )
 
         action = state_machine.next_action(run_id)
@@ -290,6 +296,37 @@ class PolymarketTrader:
             }
         if action != state_machine.STATE_SIGNED:
             raise RuntimeError(f"unexpected next_action={action!r} before signing")
+
+        # --- balance preflight ---
+        bal = self.get_balance()
+        usdc = Decimal(str(bal.get("usdc_balance") or 0))
+        notional = price_dec * size_dec
+        if usdc <= 0:
+            log_event(
+                event=EVENT_ERROR,
+                chain="polygon",
+                wallet=self.address,
+                run_id=run_id,
+                error_code="no_usdc",
+                details={"usdc_balance": str(usdc), "notional": str(notional)},
+            )
+            raise RuntimeError(f"USDC balance is zero — cannot place order")
+        if notional > usdc:
+            log_event(
+                event=EVENT_ERROR,
+                chain="polygon",
+                wallet=self.address,
+                run_id=run_id,
+                error_code="insufficient_usdc",
+                details={
+                    "usdc_balance": str(usdc),
+                    "notional": str(notional),
+                    "shortfall": str(notional - usdc),
+                },
+            )
+            raise RuntimeError(
+                f"Notional ({notional}) exceeds USDC balance ({usdc}) — deposit more USDC"
+            )
 
         if order.nonce is None:
             order.nonce = self._get_nonce()
@@ -368,7 +405,9 @@ class PolymarketTrader:
         state_machine.transition(
             run_id,
             state_machine.STATE_BROADCAST,
-            payload={"order_id": (result or {}).get("orderID") or (result or {}).get("id")},
+            payload={
+                "order_id": (result or {}).get("orderID") or (result or {}).get("id")
+            },
         )
         return result
 
