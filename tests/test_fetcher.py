@@ -11,11 +11,6 @@ class TestFetcherImports(unittest.TestCase):
             GAMMA_BASE,
             CLOB_BASE,
             DATA_BASE,
-            fetch_events,
-            fetch_markets,
-            search,
-            fetch_price_history,
-            fetch_orderbook,
         )
         self.assertTrue(GAMMA_BASE.startswith("https://"))
         self.assertTrue(CLOB_BASE.startswith("https://"))

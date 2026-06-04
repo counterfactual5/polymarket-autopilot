@@ -1,5 +1,4 @@
 """Logic tests for polymarket_autopilot."""
-import json
 import unittest
 from unittest import mock
 
