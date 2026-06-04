@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "polymarket-autopilot"
-version = "0.5.5"
+version = "0.6.0"
 description = "Polymarket trading client and market data fetcher"
 readme = "README.md"
 license = "MIT"

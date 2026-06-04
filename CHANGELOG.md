@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0] — 2026-06-05
+
+### Added
+- **Market snapshot validation** (`market_snapshot.py`): Polymarket-specific CLOB
+  sanity checks — prices in (0,1), crossed-book detection, spread limits, mid-price
+  divergence guard. Raises `MarketDataError` on degenerate/stale snapshots.
+- **Drawdown metrics** (`metrics.py`): venue-agnostic `drawdown_series`,
+  `max_drawdown`, `rank_drawdown_leaderboard` for equity-curve analysis.
+
 ## [0.1.0] — 2026-05-23
 
 ### Added
