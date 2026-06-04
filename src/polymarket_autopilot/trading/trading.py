@@ -147,7 +147,7 @@ class PolymarketTrader:
         private_key: Optional[str] = None,
         private_key_env: Optional[str] = None,
     ):
-        if not HAS_ETH_ACCOUNT and not private_key and not private_key_env:
+        if not HAS_ETH_ACCOUNT and (private_key or private_key_env):
             raise ImportError(
                 "eth-account is required for signing orders. "
                 "Install with: pip install polymarket-autopilot[trading]"

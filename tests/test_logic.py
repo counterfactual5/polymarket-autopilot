@@ -117,7 +117,6 @@ class TestPositionModel(unittest.TestCase):
         trader = PolymarketTrader(
             api_key="test-key",
             address="0x1234567890abcdef1234567890abcdef12345678",
-            private_key="0x0000000000000000000000000000000000000000000000000000000000000001",
         )
 
         with mock.patch("polymarket_autopilot.trading.trading._request",
@@ -134,7 +133,6 @@ class TestPositionModel(unittest.TestCase):
         trader = PolymarketTrader(
             api_key="test-key",
             address="0x1234567890abcdef1234567890abcdef12345678",
-            private_key="0x0000000000000000000000000000000000000000000000000000000000000001",
         )
 
         mock_response = {
