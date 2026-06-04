@@ -3,9 +3,8 @@
 Requires env vars: POLYMARKET_API_KEY, POLYMARKET_ADDRESS, POLYMARKET_PRIVATE_KEY
 """
 
-import os
 
-from polymarket_autopilot.trading import PolymarketTrader, Order
+from polymarket_autopilot.trading import PolymarketTrader
 
 
 def main():

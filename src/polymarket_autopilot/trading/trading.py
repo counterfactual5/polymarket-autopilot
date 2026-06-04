@@ -310,7 +310,7 @@ class PolymarketTrader:
                 error_code="no_usdc",
                 details={"usdc_balance": str(usdc), "notional": str(notional)},
             )
-            raise RuntimeError(f"USDC balance is zero — cannot place order")
+            raise RuntimeError("USDC balance is zero — cannot place order")
         if notional > usdc:
             log_event(
                 event=EVENT_ERROR,
